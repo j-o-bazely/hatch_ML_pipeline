@@ -24,6 +24,7 @@ if [[ ! -d "$CH2_WORKDIR" ]]; then
     echo "CH2_WORKDIR is not an existing directory: $CH2_WORKDIR" >&2
     exit 1
 fi
+
 MASTER_SCRIPTS_DIR="$(cd -- "$MASTER_SCRIPTS_DIR" && pwd -P)"
 CH2_WORKDIR="$(cd -- "$CH2_WORKDIR" && pwd -P)"
 CH2_SHELL_SCRIPTS_DIR="${MASTER_SCRIPTS_DIR}/Shell_Scripts"
@@ -41,7 +42,7 @@ fi
 
 if [[ -z "${CH2_ITERATIONS:-}" ]]; then
     CH2_ITERATIONS=""
-    for iteration in {1..3}; do
+    for iteration in {1..1000}; do
         CH2_ITERATIONS+="${CH2_ITERATIONS:+,}${iteration}"
     done
 fi

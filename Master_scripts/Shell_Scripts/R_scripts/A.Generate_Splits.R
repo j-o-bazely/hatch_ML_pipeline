@@ -38,7 +38,7 @@ meta_clean <- meta %>%
 ##  Generate a series of splits of 80%/20% ##
 set.seed(123)
 iterations <- as.integer(
-  strsplit(Sys.getenv("CH2_ITERATIONS", unset = paste(1:100, collapse = ",")), ",")[[1]]
+  strsplit(Sys.getenv("CH2_ITERATIONS", unset = paste(1:1000, collapse = ",")), ",")[[1]]
 )
 
 for (iteration in iterations) {
