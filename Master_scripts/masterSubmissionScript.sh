@@ -12,56 +12,56 @@ if [[ ! -d "$CH2_WORKDIR" ]]; then
     exit 1
 fi
 export CH2_WORKDIR
-SHELL_SCRIPTS_DIR="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
+shell_scripts_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
 
 ##  Define current iteration ##
 iter="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required; submit this script as a job array}"
 
 ##  MethylKit Objects     ##
-B1_JOB=$(sbatch --parsable \
+b1_job=$(sbatch --parsable \
     --export=ALL \
-    "${SHELL_SCRIPTS_DIR}/B1.GenerateTrainingObjects.sh" "$iter")
+    "${shell_scripts_dir}/B1.GenerateTrainingObjects.sh" "$iter")
 
-B2_JOB=$(sbatch --parsable \
+b2_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${B1_JOB} \
-    "${SHELL_SCRIPTS_DIR}/B2.MethylKitDMA.sh" "$iter")
+    --dependency=afterok:${b1_job} \
+    "${shell_scripts_dir}/B2.MethylKitDMA.sh" "$iter")
 
-B3_JOB=$(sbatch --parsable \
+b3_job=$(sbatch --parsable \
     --export=ALL \
-    "${SHELL_SCRIPTS_DIR}/B3.GenerateValidationObjects.sh" "$iter")
+    "${shell_scripts_dir}/B3.GenerateValidationObjects.sh" "$iter")
 
 ##         PQLseq         ##
-C1_JOB=$(sbatch --parsable \
+c1_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${B1_JOB} \
-    "${SHELL_SCRIPTS_DIR}/C1.PrepPQLseq.sh" "$iter")
+    --dependency=afterok:${b1_job} \
+    "${shell_scripts_dir}/C1.PrepPQLseq.sh" "$iter")
 
-C2_JOB=$(sbatch --parsable \
+c2_job=$(sbatch --parsable \
     --export=ALL \
     --array=1-29 \
-    --dependency=afterok:${C1_JOB} \
-    "${SHELL_SCRIPTS_DIR}/C2.RunPQLseq.sh" "$iter")
+    --dependency=afterok:${c1_job} \
+    "${shell_scripts_dir}/C2.RunPQLseq.sh" "$iter")
 
-C3_JOB=$(sbatch --parsable \
+c3_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${C2_JOB} \
-    "${SHELL_SCRIPTS_DIR}/C3.PvalAdjustSLIM.sh" "$iter")
+    --dependency=afterok:${c2_job} \
+    "${shell_scripts_dir}/C3.PvalAdjustSLIM.sh" "$iter")
 
 ##      Combine Data      ##
-D_JOB=$(sbatch --parsable \
+d_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${B2_JOB}:${C3_JOB} \
-    "${SHELL_SCRIPTS_DIR}/D.CombineDMAdata.sh" "$iter")
+    --dependency=afterok:${b2_job}:${c3_job} \
+    "${shell_scripts_dir}/D.CombineDMAdata.sh" "$iter")
 
 ##       Assess DMS       ##
-E_JOB=$(sbatch --parsable \
+e_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${D_JOB}:${B3_JOB} \
-    "${SHELL_SCRIPTS_DIR}/E.MeasureDMSinVal.sh" "$iter")
+    --dependency=afterok:${d_job}:${b3_job} \
+    "${shell_scripts_dir}/E.MeasureDMSinVal.sh" "$iter")
 
 ##          Tidy up       ##
-F_JOB=$(sbatch --parsable \
+f_job=$(sbatch --parsable \
     --export=ALL \
-    --dependency=afterok:${E_JOB} \
-    "${SHELL_SCRIPTS_DIR}/F.TidyEnvironment.sh" "$iter")
+    --dependency=afterok:${e_job} \
+    "${shell_scripts_dir}/F.TidyEnvironment.sh" "$iter")

@@ -8,7 +8,7 @@ set -euo pipefail
 
 ####            A.Generate_Splits.sh
 
-SCRIPT_DIR="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
+script_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
 : "${CH2_WORKDIR:?CH2_WORKDIR is required; submit with submitPipeline.sh}"
 
 if command -v module >/dev/null 2>&1; then
@@ -16,4 +16,4 @@ if command -v module >/dev/null 2>&1; then
 fi
 
 ## Run script to generate training and validation splits ##
-Rscript "${SCRIPT_DIR}/R_scripts/A.Generate_Splits.R"
+Rscript "${script_dir}/R_scripts/A.Generate_Splits.R"

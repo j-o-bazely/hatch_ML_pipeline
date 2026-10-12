@@ -2,17 +2,17 @@
 
 ## Date: 06.10.2026
 
-## Author: James B, adapted from Charley Y
+##  Author: James B, adapted from Charley Y
 
 ## Description:
-##  This code runs multiple testing correction on PQLseq-generated P values using SLIM  ##
-
+## This code runs multiple testing correction on PQLseq-generated
+## P values using SLIM.
 
 
 ## Pull iteration, available cores and chromosome ##
 args <- commandArgs(trailingOnly = TRUE)
 iter <- as.numeric(args[1])
-numCore <- as.numeric(args[2])
+num_core <- as.numeric(args[2])
 
 ## Set paths
 workdir <- Sys.getenv(
@@ -22,193 +22,264 @@ workdir <- Sys.getenv(
 tmpdir <- file.path(workdir, "tmp")
 
 
-
 ####    Merge all chromosomes   ####
 
 ## Create chromosome vector to loop through ##
 chroms <- strsplit(
-  Sys.getenv("CH2_CHROMOSOMES", unset = paste(c("chr0", paste0("chr", 1:28)), collapse = ",")),
+  Sys.getenv(
+    "CH2_CHROMOSOMES",
+    unset = paste(c("chr0", paste0("chr", 1:28)), collapse = ",")
+  ),
   ","
 )[[1]]
 
 ## Create emopty lists to store results ##
-List_fit <- list()
-List_dfs_fit <- list() 
+list_fit <- list()
+list_dfs_fit <- list()
 
 ## Load in data for each chromosome ##
 for (chr in chroms) {
   print(chr)
-  List_fit[[ chr ]] <- readRDS(file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqOutput_Fit_iter", iter, "_SLK063_ragtag_", chr, ".RDS")))
-  List_dfs_fit[[ chr ]] <- List_fit[[ chr ]]
+  list_fit[[chr]] <- readRDS(
+    file.path(
+      tmpdir,
+      paste0(
+        "hatch_trainingSamples_PQLseqOutput_Fit_iter",
+        iter,
+        "_SLK063_ragtag_",
+        chr,
+        ".RDS"
+      )
+    )
+  )
+  list_dfs_fit[[chr]] <- list_fit[[chr]]
 }
 
 ##  Bind chromosomes into a single dataframe ##
-df_AllChrms <- do.call(rbind, List_dfs_fit)
+df_all_chrms <- do.call(rbind, list_dfs_fit)
 
 ##  Check the % of NaNs for h2  ##
-length(df_AllChrms$h2[grep("NaN", df_AllChrms$h2)])/nrow(df_AllChrms)*100
+length(df_all_chrms$h2[grep("NaN", df_all_chrms$h2)]) / nrow(df_all_chrms) * 100
 
 ##  Save object  ##
 saveRDS(
-  df_AllChrms,
-  file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqFit_iter", iter, "_wholeGenome.RDS"))
+  df_all_chrms,
+  file.path(
+    tmpdir,
+    paste0("hatch_trainingSamples_PQLseqFit_iter", iter, "_wholeGenome.RDS")
+  )
 )
 
 
-####    Run SLIM correction   ####  
+####    Run SLIM correction   ####
 
 
-# SLIMcodes.R downloaded from: https://www.aspendb.org/downloads 
+# SLIMcodes.R downloaded from: https://www.aspendb.org/downloads
 
-#### Define SLIM functions #### 
+#### Define SLIM functions ####
 
-# Nothing changed from default in SLIMcodes.R (methylKit also uses default settings)
-SLIMfunc<-function(rawp,STA=.1,Divi=10,Pz=0.05,B=100,Bplot=FALSE)
-{
+# SLIMcodes.R uses the same defaults as methylKit.
+slim_func <- function(
+  raw_p,
+  sta = .1,
+  divi = 10,
+  p_z = 0.05,
+  b = 100,
+  b_plot = FALSE
+) {
   ####################
-  m <- length(rawp) 
-  
+  m <- length(raw_p) # nolint # nolint
+
   ########################
-  alpha_mtx=NULL;#
-  pi0s_est_COM=NULL;
-  SzCluster_mtx=NULL;
-  P_pi1_mtx=NULL;
-  pi1_act_mtx=NULL;
-  Dist_group=NULL;
-  Num_mtx=NULL;
-  Gamma=NULL;
-  PI0=NULL;
-  
+  alpha_mtx <- NULL #
+  pi0s_est_com <- NULL
+  sz_cluster_mtx <- NULL # nolint
+  p_pi1_mtx <- NULL
+  pi1_act_mtx <- NULL
+  dist_group <- NULL # nolint
+  num_mtx <- NULL
+  gamma_values <- NULL
+  pi0_matrix <- NULL
+
   #############
-  ##observed points
-  lambda_ga=seq(0,1,0.001);
-  gamma_ga=sapply(lambda_ga,f1,rawp=rawp);
-  Gamma=c(Gamma,gamma_ga);
-  alpha_mtx=c(alpha_mtx,gamma_ga[which(lambda_ga==0.05)]);
-  
-  
-  ###esimation
-  pi0_mtx=NULL;
-  x.axis=NULL;
-  y.axis=NULL;
-  itv=(1-STA)/Divi;
-  for (i in 1:Divi)##10 for uniform data
-  {
-    cutoff=STA+(i/Divi)*(1-STA);##10 for uniform data
-    lambda=seq(cutoff-itv,cutoff,itv/10);
-    gamma_mtx=sapply(lambda,f1,rawp=rawp);
-    LModel=lm(gamma_mtx~lambda);
-    pi0_mtx=c(pi0_mtx,coefficients(LModel)[2]);
+  ## observed points
+  lambda_ga <- seq(0, 1, 0.001)
+  gamma_ga <- sapply(lambda_ga, f1, raw_p = raw_p)
+  gamma_values <- c(gamma_values, gamma_ga)
+  alpha_mtx <- c(alpha_mtx, gamma_ga[which(lambda_ga == 0.05)])
+
+
+  ### esimation
+  pi0_mtx <- NULL
+  x_axis <- NULL # nolint
+  y_axis <- NULL # nolint
+  interval <- (1 - sta) / divi
+  for (i in 1:divi) ## 10 for uniform data
+  { # nolint
+    cutoff <- sta + (i / divi) * (1 - sta) ## 10 for uniform data
+    lambda <- seq(cutoff - interval, cutoff, interval / 10)
+    gamma_mtx <- sapply(lambda, f1, raw_p = raw_p) # nolint
+    lm_model <- lm(gamma_mtx ~ lambda)
+    pi0_mtx <- c(pi0_mtx, coefficients(lm_model)[2])
   }
-  
-  
+
+
   ##################################
-  ########searching
-  N_COM=NULL;
-  N_rawp=NULL;
-  maxFDR_mtx=NULL;
-  quapoint_mtx=NULL; 
-  if (B<=1) B=100;
-  quapoint_mtx=seq(0.01,0.99,1/B);
-  for (k in 1:length(quapoint_mtx))
-  {
-    qua_point=quapoint_mtx[k];
-    
-    pi0_combLR=min(quantile(pi0_mtx,qua_point),1);#mean(pi0_mtx);#median();# qua_point=0.78 for desreasing distribution;
-    ##0.4 for uniform or normal distribution;
-    pi0_est=pi0_combLR;
-    
-    ###########Calculate independent index of raw p vlaues
-    PI0=rbind(PI0,pi0_mtx);
-    
-    pi0s_est_COM=c(pi0s_est_COM,pi0_est);
-    ##Condition1
-    P_pi1=sort(rawp)[max(length(rawp)*(1-pi0_est),1)];##
-    P_pi1_mtx=c(P_pi1_mtx,P_pi1);
-    
-    pi0=pi0_est;
-    if (is.null(Pz)) Pz=0.05;
-    maxFDR=Pz*pi0/(1-(1-Pz)*pi0);
-    maxFDR_mtx=c(maxFDR_mtx,maxFDR);
-    
-    qvalues_combLR=QValuesfun(rawp,pi0);
-    qvalue_cf=maxFDR;
-    selected=which(qvalues_combLR<qvalue_cf);
-    Sel_qvalues_combLR=selected;
-    
-    pi1_act_mtx=c(pi1_act_mtx,length(Sel_qvalues_combLR)/length(rawp));
-    N_COM=c(N_COM,list(Sel_qvalues_combLR));
-    Num_mtx=c(Num_mtx,length(Sel_qvalues_combLR));
+  ######## searching
+  n_com <- NULL
+  n_raw_p <- NULL # nolint
+  max_fdr_mtx <- NULL
+  qua_point_mtx <- NULL
+  if (b <= 1) b <- 100
+  qua_point_mtx <- seq(0.01, 0.99, 1 / b)
+  for (k in 1:length(qua_point_mtx)) # nolint
+  { # nolint
+    qua_point <- qua_point_mtx[k]
+
+    pi0_comb_lr <- min(quantile(pi0_mtx, qua_point), 1)
+    ## 0.4 for uniform or normal distribution;
+    pi0_est <- pi0_comb_lr
+
+    ########### Calculate independent index of raw p vlaues
+    pi0_matrix <- rbind(pi0_matrix, pi0_mtx)
+
+    pi0s_est_com <- c(pi0s_est_com, pi0_est)
+    ## Condition1
+    p_pi1 <- sort(raw_p)[max(length(raw_p) * (1 - pi0_est), 1)]
+    p_pi1_mtx <- c(p_pi1_mtx, p_pi1)
+
+    pi0 <- pi0_est
+    if (is.null(p_z)) p_z <- 0.05
+    max_fdr <- p_z * pi0 / (1 - (1 - p_z) * pi0)
+    max_fdr_mtx <- c(max_fdr_mtx, max_fdr)
+
+    q_values_comb_lr <- q_values_fun(raw_p, pi0)
+    q_value_cutoff <- max_fdr
+    selected <- which(q_values_comb_lr < q_value_cutoff)
+    selected_q_values_comb_lr <- selected
+
+    pi1_act_mtx <- c(
+      pi1_act_mtx,
+      length(selected_q_values_comb_lr) / length(raw_p)
+    )
+    n_com <- c(n_com, list(selected_q_values_comb_lr))
+    num_mtx <- c(num_mtx, length(selected_q_values_comb_lr))
   }
-  length(N_COM)
-  length(quapoint_mtx)
-  
-  ####doing judging
-  ##by max FDR
-  pi1s_est_COM=1-pi0s_est_COM;
-  Diff=sum(rawp<=Pz)/length(rawp)-pi1_act_mtx;
-  
+  length(n_com)
+  length(qua_point_mtx)
+
+  #### doing judging
+  ## by max FDR
+  pi1s_est_com <- 1 - pi0s_est_com # nolint
+  difference <- sum(raw_p <= p_z) / length(raw_p) - pi1_act_mtx
+
   ###
-  loc=which.min(abs(Diff));
-  Diff.loc=Diff[loc];
-  selQuantile=quapoint_mtx[loc];
-  pi0_Est=min(1,pi0s_est_COM[loc]);
-  maxFDR.Pz=Pz*pi0_Est/(1-(1-Pz)*pi0_Est);
-  
-  if(Bplot)
-  {
-    windows();
-    par(mfrow=c(1,2));
-    hist(rawp,main="Histogram of p-value");
-    gamma_ga=sapply(lambda_ga,f1,rawp=rawp);
-    plot(lambda_ga,gamma_ga,type="l",main="Relationship of p- and q value",xlab=expression(lambda),ylab=expression(gamma),cex.lab=1.45,cex.axis=1.42)
-    #par(xaxp=c(0,1,10));
-    #axis(1);
-    ##qvalues
-    qValues=QValuesfun(rawp,pi0=pi0_Est);
-    gammaq_ga=sapply(lambda_ga,f1,rawp=qValues);
-    lines(lambda_ga,gammaq_ga,col="blue",lwd=2,lty="dashed")
-    abline(v=Pz,col="black",lwd=2,lty="dotdash")
-    abline(v=maxFDR.Pz,col="blue",lwd=2,lty="dotdash")
-    text(0.75,0.6,labels=paste("L=",round(abs(Diff.loc),4),sep=""));
-    leg=list(bquote("CPD of p-value"),bquote("CPD of q-value"),bquote("Pmax"==.(Pz)),bquote("FDRmax"==.(round(maxFDR.Pz,2))));
-    legend("bottomright",legend=as.expression(leg),lwd=2,lty=c("solid","dashed","dotdash","dotdash"),col=c("black","blue","black","blue"));
+  location <- which.min(abs(difference))
+  difference_location <- difference[location]
+  selected_quantile <- qua_point_mtx[location]
+  pi0_est <- min(1, pi0s_est_com[location])
+  max_fdr_p_z <- p_z * pi0_est / (1 - (1 - p_z) * pi0_est)
+
+  if (b_plot) {
+    windows() # nolint
+    par(mfrow = c(1, 2))
+    hist(raw_p, main = "Histogram of p-value")
+    gamma_ga <- sapply(lambda_ga, f1, raw_p = raw_p)
+    plot(
+      lambda_ga,
+      gamma_ga,
+      type = "l",
+      main = "Relationship of p- and q value",
+      xlab = expression(lambda),
+      ylab = expression(gamma),
+      cex.lab = 1.45,
+      cex.axis = 1.42
+    )
+    # par(xaxp=c(0,1,10)); # nolint
+    # axis(1); # nolint
+    ## qvalues
+    q_values <- q_values_fun(raw_p, pi0 = pi0_est)
+    gamma_q_ga <- sapply(lambda_ga, f1, raw_p = q_values)
+    lines(lambda_ga, gamma_q_ga, col = "blue", lwd = 2, lty = "dashed")
+    abline(v = p_z, col = "black", lwd = 2, lty = "dotdash")
+    abline(v = max_fdr_p_z, col = "blue", lwd = 2, lty = "dotdash")
+    text(
+      0.75,
+      0.6,
+      labels = paste("L=", round(abs(difference_location), 4), sep = "")
+    )
+    legend_labels <- list(
+      bquote("CPD of p-value"),
+      bquote("CPD of q-value"),
+      bquote("Pmax" == .(p_z)),
+      bquote("FDRmax" == .(round(max_fdr_p_z, 2)))
+    )
+    legend(
+      "bottomright",
+      legend = as.expression(legend_labels),
+      lwd = 2,
+      lty = c("solid", "dashed", "dotdash", "dotdash"),
+      col = c("black", "blue", "black", "blue")
+    )
   }
-  
-  return(list(pi0_Est=pi0_Est,selQuantile=selQuantile));
+
+  return(list(pi0_est = pi0_est, selected_quantile = selected_quantile)) # nolint
 }
-f1 <- function(cutoff,rawp){sum(rawp<cutoff)/length(rawp)*100};
-QValuesfun<-function(rawp,pi0)
-{
-  order_rawp=sort(rawp);
-  qvalues=pi0*length(order_rawp)*order_rawp/c(1:length(order_rawp));
-  temp=cummin(qvalues[seq(length(qvalues),1,-1)])
-  qvalues=temp[seq(length(temp),1,-1)];
-  qvalues=qvalues[order(order(rawp))]
+f1 <- function(cutoff, raw_p) {
+  sum(raw_p < cutoff) / length(raw_p) * 100
+}
+q_values_fun <- function(raw_p, pi0) {
+  ordered_raw_p <- sort(raw_p)
+  q_values <- pi0 * length(ordered_raw_p) * ordered_raw_p /
+    seq_along(ordered_raw_p)
+  temporary_q_values <- cummin(q_values[seq(length(q_values), 1, -1)])
+  q_values <- temporary_q_values[seq(length(temporary_q_values), 1, -1)]
+  q_values[order(order(raw_p))]
 }
 
 #### Run SLIM on PQLseq output ####
 
 ## Load PQLseq whole genome object generated previously ##
-df_AllChrms <- readRDS(file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqFit_iter", iter, "_wholeGenome.RDS")))
+df_all_chrms <- readRDS(
+  file.path(
+    tmpdir,
+    paste0("hatch_trainingSamples_PQLseqFit_iter", iter, "_wholeGenome.RDS")
+  )
+)
 
 ## Pull p values ##
-pvals <- df_AllChrms$pvalue
+pvals <- df_all_chrms$pvalue
 
 # Run SLIM on these p values ##
-qvals = {QValuesfun(pvals,
-                 SLIMfunc(pvals,STA=.1,Divi=10,Pz=0.05,B=100,Bplot=FALSE)$pi0_Est)
+qvals <- {
+  q_values_fun(
+    pvals,
+    slim_func(
+      pvals,
+      sta = .1,
+      divi = 10,
+      p_z = 0.05,
+      b = 100,
+      b_plot = FALSE
+    )$pi0_est
+  )
 }
 
 ## Add calculated Q values to PQLseq output ##
-slim_output <- df_AllChrms
+slim_output <- df_all_chrms
 slim_output$qvalue <- qvals
 
 ####    Checks    ####
 ## Check number of sites which failed to converge ##
-algorithmFailure <- nrow(slim_output[slim_output$qvalue == 0 & slim_output$converged == "FALSE",])  # -> All sites that are q=0 also failed to converge -> represent algorithm failure and should be removed
+algorithm_failure <- nrow(
+  slim_output[
+    slim_output$qvalue == 0 & slim_output$converged == "FALSE",
+  ]
+)
 
-message(paste0(algorithmFailure, ' sites failed to converge and will be removed'))
+message(
+  paste0(algorithm_failure, " sites failed to converge and will be removed")
+)
 
 ## Filter out failed convergences
 slim_output_filtered <- slim_output[slim_output$converged == "TRUE", ]
@@ -216,7 +287,12 @@ slim_output_filtered <- slim_output[slim_output$converged == "TRUE", ]
 ## Save filtered object
 saveRDS(
   slim_output_filtered,
-  file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqFit_iter", iter, "_wholeGenome_corrected.RDS"))
+  file.path(
+    tmpdir,
+    paste0(
+      "hatch_trainingSamples_PQLseqFit_iter",
+      iter,
+      "_wholeGenome_corrected.RDS"
+    )
+  )
 )
-
-

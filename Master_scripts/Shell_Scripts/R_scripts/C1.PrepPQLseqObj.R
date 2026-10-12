@@ -10,13 +10,13 @@
 
 
 ####  Environment Preparation ####
-library(methylKit)
+library(methylKit) # nolint: object_usage_linter.
 library(dplyr)
 
 ## Pull iteration & available cores ##
 args <- commandArgs(trailingOnly = TRUE)
 iter <- as.numeric(args[1])
-numCore <- as.numeric(args[2])
+num_core <- as.numeric(args[2])
 
 ## Set paths
 workdir <- Sys.getenv(
@@ -27,9 +27,9 @@ tmpdir <- file.path(workdir, "tmp")
 iterdir <- file.path(workdir, "tmp", "iterationData")
 
 ## Define functions to generate number of Cs and coverage data for PQLseq input
-PrepNumCsFun <- function(list_of_dfs) {
+prep_num_cs <- function(list_of_dfs) {
   for (i in seq_along(list_of_dfs)) {
-    list_of_dfs[[i]] <- list_of_dfs[[i]] %>% dplyr::select(-chr)
+    list_of_dfs[[i]] <- list_of_dfs[[i]] |> plyr::select(-chr)
 
     col_names <- colnames(list_of_dfs[[i]])
     cols_to_delete <- grep("^coverage", col_names)
@@ -37,17 +37,17 @@ PrepNumCsFun <- function(list_of_dfs) {
       list_of_dfs[[i]] <- list_of_dfs[[i]][, -cols_to_delete, drop = FALSE]
     }
 
-    list_of_dfs[[i]] <- list_of_dfs[[i]] %>%
+    list_of_dfs[[i]] <- list_of_dfs[[i]] |>
       rename_with(~gsub("^numCs", "", .x))
 
     colnames(list_of_dfs[[i]]) <- paste0("ind", colnames(list_of_dfs[[i]]))
   }
-  return(list_of_dfs)
+  return(list_of_dfs) # nolint: return_linter.
 }
 
-PrepCoverageFun <- function(list_of_dfs) {
+prep_coverage <- function(list_of_dfs) {
   for (i in seq_along(list_of_dfs)) {
-    list_of_dfs[[i]] <- list_of_dfs[[i]] %>% dplyr::select(-chr)
+    list_of_dfs[[i]] <- list_of_dfs[[i]] |> dplyr::select(-chr)
 
     col_names <- colnames(list_of_dfs[[i]])
     cols_to_delete <- grep("^numCs", col_names)
@@ -55,111 +55,149 @@ PrepCoverageFun <- function(list_of_dfs) {
       list_of_dfs[[i]] <- list_of_dfs[[i]][, -cols_to_delete, drop = FALSE]
     }
 
-    list_of_dfs[[i]] <- list_of_dfs[[i]] %>%
+    list_of_dfs[[i]] <- list_of_dfs[[i]] |>
       rename_with(~gsub("coverage", "", .x))
 
     colnames(list_of_dfs[[i]]) <- paste0("ind", colnames(list_of_dfs[[i]]))
   }
-  return(list_of_dfs)
+  return(list_of_dfs) # nolint
 }
 
 ## Load training sample uniteCov object for object generation
-hatch_trainingSamples_uniteObj <- readRDS(
+hatch_training_unite_obj <- readRDS(
   file.path(tmpdir, paste0("hatch_trainingSamples_uniteObj_iter", iter, ".RDS"))
 )
 
 ## Load metadata for training samples of the current iteration
-hatch_trainingSamples_metadata <- read.csv(
-  file.path(iterdir, paste0("hatch_trainingSamples_metadata_iter", iter, ".csv"))
+hatch_training_meta <- read.csv(
+  file.path(
+    iterdir,
+    paste0("hatch_trainingSamples_metadata_iter", iter, ".csv")
+  )
 )
 
 
 
 ####  Generate Kinship Matrix   ####
 ## Build the kinship matrix by maternal group
-mother_ids <- as.character(hatch_trainingSamples_metadata$Mother)
+mother_ids <- as.character(hatch_training_meta$Mother)
 same_mother <- outer(mother_ids, mother_ids, FUN = "==")
 same_mother[is.na(same_mother)] <- FALSE
 hatch_gen_mat <- 0.5 * same_mother
 diag(hatch_gen_mat) <- 1
 dimnames(hatch_gen_mat) <- list(
-  hatch_trainingSamples_metadata$Sample,
-  hatch_trainingSamples_metadata$Sample
+  hatch_training_meta$Sample,
+  hatch_training_meta$Sample
 )
 hatch_gen_df <- as.data.frame(hatch_gen_mat)
 
 ## Save kinship matrix to file
 saveRDS(
   hatch_gen_df,
-  file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqInput_KinshipMatrix_iter", iter, ".RDS"))
+  file.path(
+    tmpdir,
+    paste0("hatch_trainingSamples_PQLseqInput_KinshipMatrix_iter", iter, ".RDS")
+  )
 )
 
 
 ####  Prepare Methylation Data Inputs for PQLseq  ####
 ## Convert uniteCov object to data.frame
-hatch_trainingSamples_data <- as.data.frame(getData(hatch_trainingSamples_uniteObj))
+hatch_training_samples_data <- as.data.frame(
+  getData(hatch_training_unite_obj)
+)
 
 ## Rename rows to site names
-rownames(hatch_trainingSamples_data) <- paste(
-  hatch_trainingSamples_data$chr,
-  hatch_trainingSamples_data$start,
+rownames(hatch_training_samples_data) <- paste(
+  hatch_training_samples_data$chr,
+  hatch_training_samples_data$start,
   sep = "."
 )
 
 ## Remove site, start, end and strand columns (keep chr column)
-hatch_trainingSamples_data <- hatch_trainingSamples_data %>% dplyr::select(-start, -end, -strand)
+hatch_training_samples_data <- hatch_training_samples_data |>
+  dplyr::select(-start, -end, -strand)
 
 ## Delete all numTs columns: not needed by either
-col_names <- colnames(hatch_trainingSamples_data)
+col_names <- colnames(hatch_training_samples_data)
 cols_to_delete <- grep("^numTs", col_names)
 if (length(cols_to_delete) > 0) {
-  hatch_trainingSamples_data <- hatch_trainingSamples_data[, -cols_to_delete, drop = FALSE]
+  hatch_training_samples_data <- hatch_training_samples_data[
+    , -cols_to_delete, drop = FALSE
+  ]
 }
 
 ## Split data into chromosomes
-hatch_trainingSamples_data$chr <- as.factor(hatch_trainingSamples_data$chr)
-hatch_trainingSamples_data_list <- split(hatch_trainingSamples_data, hatch_trainingSamples_data$chr)
+hatch_training_samples_data$chr <- as.factor(hatch_training_samples_data$chr)
+hatch_training_data_list <- split(
+  hatch_training_samples_data,
+  hatch_training_samples_data$chr
+)
 
 ## Number of Cs inputs
-hatch_trainingSamples_data_list_chr_df_numCs <- PrepNumCsFun(hatch_trainingSamples_data_list)
+training_data_by_chr_num_cs <- prep_num_cs(hatch_training_data_list)
 
 ## save per-chromosome ##
 lapply(
-  names(hatch_trainingSamples_data_list_chr_df_numCs),
+  names(training_data_by_chr_num_cs),
   function(chr_name) {
     saveRDS(
-      hatch_trainingSamples_data_list_chr_df_numCs[[chr_name]],
-      file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqInput_NumCs_iter", iter, "_", chr_name, ".RDS"))
+      training_data_by_chr_num_cs[[chr_name]],
+      file.path(
+        tmpdir,
+        paste0(
+          "hatch_trainingSamples_PQLseqInput_NumCs_iter",
+          iter,
+          "_",
+          chr_name,
+          ".RDS"
+        )
+      )
     )
   }
 )
 
 ## Coverage inputs
-hatch_trainingSamples_data_list_chr_df_coverage <- PrepCoverageFun(hatch_trainingSamples_data_list)
+training_data_by_chr_coverage <- prep_coverage(hatch_training_data_list)
 
 ## save per-chromosome ##
 lapply(
-  names(hatch_trainingSamples_data_list_chr_df_coverage),
+  names(training_data_by_chr_coverage),
   function(chr_name) {
     saveRDS(
-      hatch_trainingSamples_data_list_chr_df_coverage[[chr_name]],
-      file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqInput_Coverage_iter", iter, "_", chr_name, ".RDS"))
+      training_data_by_chr_coverage[[chr_name]],
+      file.path(
+        tmpdir,
+        paste0(
+          "hatch_trainingSamples_PQLseqInput_Coverage_iter",
+          iter,
+          "_",
+          chr_name,
+          ".RDS"
+        )
+      )
     )
   }
 )
 
 ## Treatment vector
-treatment.no <- setNames(
+treatment_no <- setNames(
   as.integer(factor(
-    hatch_trainingSamples_metadata$parasiteFactor,
-    levels = unique(hatch_trainingSamples_metadata$parasiteFactor)
+    hatch_training_meta$parasiteFactor,
+    levels = unique(hatch_training_meta$parasiteFactor)
   )) - 1L,
-  hatch_trainingSamples_metadata$Sample
+  hatch_training_meta$Sample
 )
 
 ## Save treatment to file ##
 saveRDS(
-  treatment.no,
-  file.path(tmpdir, paste0("hatch_trainingSamples_PQLseqInput_TreatmentVector_iter", iter, ".RDS"))
+  treatment_no,
+  file.path(
+    tmpdir,
+    paste0(
+      "hatch_trainingSamples_PQLseqInput_TreatmentVector_iter",
+      iter,
+      ".RDS"
+    )
+  )
 )
-

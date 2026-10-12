@@ -5,7 +5,8 @@
 ## Author: James B
 
 ## Description:
-##    This script generates the required analysis objects from the training sample subset   ##
+##  This script generates the required analysis objects
+##  from the training sample subset
 
 
 
@@ -17,7 +18,7 @@ library(methylKit)
 ## Pull iteration & available cores ##
 args <- commandArgs(trailingOnly = TRUE)
 iter <- as.numeric(args[1])
-numCore <- as.numeric(args[2])
+num_core <- as.numeric(args[2])
 
 ## Set directories ##
 workdir <- Sys.getenv(
@@ -30,25 +31,30 @@ iterdir <- file.path(workdir, "tmp", "iterationData")
 
 ####  Training Data Preparation  ####
 ## Load metadata for training samples of the current iteration
-hatch_trainingSamples_metadata <- read.csv(
-  file.path(iterdir, paste0("hatch_trainingSamples_metadata_iter", iter, ".csv"))
+hatch_training_meta <- read.csv(
+  file.path(
+    iterdir,
+    paste0("hatch_trainingSamples_metadata_iter", iter, ".csv")
+  )
 )
 
 ## Load full hatchling methylBase object ##
-hatch_allSamples_uniteObj <- readRDS(
-  file.path(workdir, "input/hatchUnite_100minSmallestGroup_minCov5_filtered_normal.RDS")
+hatch_all_samples_unite_obj <- readRDS(
+  file.path(
+    workdir,
+    "input/hatchUnite_100minSmallestGroup_minCov5_filtered_normal.RDS"
+  )
 )
 
 ## Use reorganize() to keep only training samples ##
-hatch_trainingSamples_uniteObj <- reorganize(
-  hatch_allSamples_uniteObj,
-  sample.ids = hatch_trainingSamples_metadata$Sample,
-  treatment = hatch_trainingSamples_metadata$parasiteFactor
+hatch_training_unite_obj <- reorganize(
+  hatch_all_samples_unite_obj,
+  sample.ids = hatch_training_meta$Sample,
+  treatment = hatch_training_meta$parasiteFactor
 )
 
 ## Save object to file ##
 saveRDS(
-  hatch_trainingSamples_uniteObj,
+  hatch_training_unite_obj,
   file.path(tmpdir, paste0("hatch_trainingSamples_uniteObj_iter", iter, ".RDS"))
 )
-

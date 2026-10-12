@@ -13,11 +13,11 @@ if [[ "$#" -ne 2 ]]; then
     exit 2
 fi
 
-MASTER_SCRIPTS_DIR="$1"
+master_scripts_dir="$1"
 CH2_WORKDIR="$2"
 
-if [[ ! -d "$MASTER_SCRIPTS_DIR" ]]; then
-    echo "Master scripts directory does not exist: $MASTER_SCRIPTS_DIR" >&2
+if [[ ! -d "$master_scripts_dir" ]]; then
+    echo "Master scripts directory does not exist: $master_scripts_dir" >&2
     exit 1
 fi
 if [[ ! -d "$CH2_WORKDIR" ]]; then
@@ -25,11 +25,11 @@ if [[ ! -d "$CH2_WORKDIR" ]]; then
     exit 1
 fi
 
-MASTER_SCRIPTS_DIR="$(cd -- "$MASTER_SCRIPTS_DIR" && pwd -P)"
+master_scripts_dir="$(cd -- "$master_scripts_dir" && pwd -P)"
 CH2_WORKDIR="$(cd -- "$CH2_WORKDIR" && pwd -P)"
-CH2_SHELL_SCRIPTS_DIR="${MASTER_SCRIPTS_DIR}/Shell_Scripts"
-A_SCRIPT="${CH2_SHELL_SCRIPTS_DIR}/A.Generate_Splits.sh"
-MASTER_SCRIPT="${MASTER_SCRIPTS_DIR}/masterSubmissionScript.sh"
+CH2_SHELL_SCRIPTS_DIR="${master_scripts_dir}/Shell_Scripts"
+a_script="${CH2_SHELL_SCRIPTS_DIR}/A.Generate_Splits.sh"
+master_script="${master_scripts_dir}/masterSubmissionScript.sh"
 
 if [[ ! -r "${CH2_WORKDIR}/input/hatch_metadata.csv" ]]; then
     echo "Cannot read required metadata: ${CH2_WORKDIR}/input/hatch_metadata.csv" >&2
@@ -57,26 +57,26 @@ if ! command -v sbatch >/dev/null 2>&1; then
     exit 1
 fi
 
-if [[ ! -f "$A_SCRIPT" || ! -f "$MASTER_SCRIPT" ]]; then
-    echo "Could not find both pipeline submission scripts under ${MASTER_SCRIPTS_DIR}." >&2
+if [[ ! -f "$a_script" || ! -f "$master_script" ]]; then
+    echo "Could not find both pipeline submission scripts under ${master_scripts_dir}." >&2
     exit 1
 fi
 
 mkdir -p "${CH2_WORKDIR}/output/permanovaResults" "${CH2_WORKDIR}/output/MLdata"
 export CH2_WORKDIR CH2_ITERATIONS CH2_SHELL_SCRIPTS_DIR
 
-A_JOB_ID="$(sbatch --parsable --export=ALL "$A_SCRIPT")"
-A_JOB_ID="${A_JOB_ID%%;*}"
-if [[ ! "$A_JOB_ID" =~ ^[0-9]+$ ]]; then
-    echo "Could not parse Job A's Slurm job ID: ${A_JOB_ID}" >&2
+a_job_id="$(sbatch --parsable --export=ALL "$a_script")"
+a_job_id="${a_job_id%%;*}"
+if [[ ! "$a_job_id" =~ ^[0-9]+$ ]]; then
+    echo "Could not parse Job A's Slurm job ID: ${a_job_id}" >&2
     exit 1
 fi
 
-ARRAY_JOB_ID="$(sbatch --parsable --export=ALL \
+array_job_id="$(sbatch --parsable --export=ALL \
     --array="$CH2_ITERATIONS" \
-    --dependency="afterok:${A_JOB_ID}" \
-    "$MASTER_SCRIPT")"
+    --dependency="afterok:${a_job_id}" \
+    "$master_script")"
  
-printf 'Submitted Job A (ID %s).\n' "$A_JOB_ID"
+printf 'Submitted Job A (ID %s).\n' "$a_job_id"
 printf 'Submitted iteration array (ID %s), dependent on Job A; iterations: %s\n' \
-    "$ARRAY_JOB_ID" "$CH2_ITERATIONS"
+    "$array_job_id" "$CH2_ITERATIONS"
