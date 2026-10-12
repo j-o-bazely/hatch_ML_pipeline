@@ -36,6 +36,11 @@ meta_clean <- meta |>
     parasiteFactor
   )
 
+## Check: Are samples unique? ##
+if (anyDuplicated(meta_clean$Sample)) {
+  stop("ERROR: Duplicate sample IDs detected in metadata.")
+}
+
 ##  Generate a series of splits of 80%/20% ##
 
 ## Set seed for reproducbility ##

@@ -46,11 +46,31 @@ hatch_all_samples_unite_obj <- readRDS(
   )
 )
 
+## Check: Are all samples in full methylBase object ##
+if (length(setdiff(
+  hatch_training_meta$Sample,
+  hatch_all_samples_unite_obj@sample.ids
+)) > 0) {
+  stop("ERROR: Training samples missing from full object.")
+}
+
 ## Use reorganize() to keep only training samples ##
 hatch_training_unite_obj <- reorganize(
   hatch_all_samples_unite_obj,
   sample.ids = hatch_training_meta$Sample,
   treatment = hatch_training_meta$parasiteFactor
+)
+
+## Check: Has sample <-> treatment integrity been maintained ##
+stopifnot(
+  identical(
+    hatch_training_unite_obj@sample.ids,
+    hatch_training_meta$Sample
+  ),
+  identical(
+    hatch_training_unite_obj@treatment,
+    hatch_training_meta$parasiteFactor
+  )
 )
 
 ## Save object to file ##

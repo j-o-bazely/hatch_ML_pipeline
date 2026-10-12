@@ -46,6 +46,7 @@ hatch_training_diff_meth <- calculateDiffMethDSS(
   mc.cores = num_core
 )
 
+## Write to file ##
 saveRDS(
   hatch_training_diff_meth,
   file.path(tmpdir, paste0("hatch_trainingSamples_diffMeth_iter", iter, ".RDS"))

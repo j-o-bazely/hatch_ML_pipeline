@@ -46,6 +46,9 @@ methdiff <- readRDS(
   file.path(tmpdir, paste0("hatch_trainingSamples_diffMeth_iter", iter, ".RDS"))
 )
 
+
+
+
 #### Prepare Data for Merging ####
 methdiff_df <- as.data.frame(getData(methdiff))
 methdiff_df$pvalue <- NULL
@@ -54,10 +57,22 @@ methdiff_df$siteloc <- paste(methdiff_df$chr, methdiff_df$start, sep = ".")
 rownames(methdiff_df) <- methdiff_df$siteloc
 slim_output$siteloc <- rownames(slim_output)
 
-if (anyDuplicated(methdiff_df$siteloc) || anyDuplicated(slim_output$siteloc)) {
-  stop(
-    "Duplicate genomic locations prevent matching PQLseq and methylKit results."
-  )
+## Check genomic identifiers ##
+
+if (
+  anyNA(methdiff_df$siteloc) ||
+  anyNA(slim_output$siteloc) ||
+  any(methdiff_df$siteloc == "") ||
+  any(slim_output$siteloc == "")
+) {
+  stop("ERROR: Missing genomic site identifiers.")
+}
+
+if (
+  anyDuplicated(methdiff_df$siteloc) ||
+  anyDuplicated(slim_output$siteloc)
+) {
+  stop("ERROR: Duplicate genomic locations prevent matching results.")
 }
 
 reorder_idx <- match(methdiff_df$siteloc, slim_output$siteloc)

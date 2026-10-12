@@ -10,8 +10,7 @@
 
 ####  Environment Preparation ####
 
-## Load custom PQLseq function if a project-local override is available.
-## Otherwise, fall back to the installed PQLseq package.
+## Load custom PQLseq function ##
 custom_pqlseq_script <- Sys.getenv(
   "CH2_CUSTOM_PQLSEQ_SCRIPT",
   unset = file.path(
@@ -105,6 +104,29 @@ treatment_no <- readRDS(
       ".RDS"
     )
   )
+)
+
+#### Check" Samples alignment is consistent across objects ####
+sample_cols <- paste0("ind", seq_along(treatment_no))
+
+if (
+!identical(colnames(num_cs_df), sample_cols) ||
+!identical(colnames(coverage_df), sample_cols) ||
+!identical(names(treatment_no), sample_mapping$Sample) ||
+!identical(rownames(relatedness_mat), sample_mapping$Sample) ||
+!identical(colnames(relatedness_mat), sample_mapping$Sample) ||
+ncol(num_cs_df) != length(treatment_no) ||
+ncol(coverage_df) != length(treatment_no)
+) {
+stop(
+"ERROR: Sample alignment failed. Phenotype, kinship matrix, ",
+"methylation counts and coverage must contain the same samples ",
+"in the same order."
+)
+}
+message(
+"PASS: Phenotype, kinship matrix, methylation counts and coverage ",
+"are aligned by sample."
 )
 
 

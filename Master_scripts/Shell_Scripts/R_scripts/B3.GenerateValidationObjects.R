@@ -41,6 +41,13 @@ hatch_all_samples_unite_obj <- readRDS(
   )
 )
 
+## Check: Are all samples in full methylBase object ##
+if (length(setdiff(
+  hatch_validation_meta$Sample,
+  hatch_all_samples_unite_obj@sample.ids
+)) > 0) {
+  stop("ERROR: Training samples missing from full object.")
+}
 
 ####  Generate validation object  ####
 ## Select only valudation samples ##
@@ -48,6 +55,18 @@ hatch_validation_unite_obj <- reorganize(
   hatch_all_samples_unite_obj,
   sample.ids = hatch_validation_meta$Sample,
   treatment = hatch_validation_meta$parasiteFactor
+)
+
+## Check: Has sample <-> treatment integrity been maintained ##
+stopifnot(
+  identical(
+    hatch_validation_unite_obj@sample.ids,
+    hatch_validation_meta$Sample
+  ),
+  identical(
+    hatch_validation_unite_obj@treatment,
+    hatch_validation_meta$parasiteFactor
+  )
 )
 
 ## Save object to file ##
