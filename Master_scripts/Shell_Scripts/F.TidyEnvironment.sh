@@ -6,7 +6,7 @@
 
 iter=$1
 
-printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Script: F.TidyEnvironment.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
 ####            F.TidyEnvironment.sh

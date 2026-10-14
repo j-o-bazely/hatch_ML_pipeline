@@ -8,7 +8,7 @@ set -euo pipefail
 
 iter=$1
 
-printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Script: C3.PvalAdjustSLIM.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
 ####            C3.PvalAdjustSLIM.sh

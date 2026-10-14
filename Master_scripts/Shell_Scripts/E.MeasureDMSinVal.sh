@@ -8,7 +8,7 @@ set -euo pipefail
 
 iter=$1
 
-printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Script: E.MeasureDMSinVal.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
 ####            E.MeasureDMSinVal.sh

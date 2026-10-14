@@ -8,7 +8,7 @@ set -euo pipefail
 
 iter=$1
 
-printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Script: C1.PrepPQLseq.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
 ####            C1.prepPQLseq.sh

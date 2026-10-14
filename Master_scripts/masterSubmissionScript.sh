@@ -9,7 +9,7 @@ set -euo pipefail
 ##  Define current iteration ##
 iter="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required; submit this script as a job array}"
 
-printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Script: masterSubmissionScript.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
 CH2_WORKDIR="${CH2_WORKDIR:?Set CH2_WORKDIR to the pipeline data directory before submitting this script}"
