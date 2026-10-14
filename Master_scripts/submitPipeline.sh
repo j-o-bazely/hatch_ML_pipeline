@@ -4,7 +4,7 @@
 #SBATCH --mem=8G
 #SBATCH --time=1:00:00
 
-# Submit the shared split-generation job, then the per-iteration job array.
+# Submit the per-iteration job array after split metadata has been generated.
 
 set -euo pipefail
 
@@ -28,7 +28,6 @@ fi
 master_scripts_dir="$(cd -- "$master_scripts_dir" && pwd -P)"
 CH2_WORKDIR="$(cd -- "$CH2_WORKDIR" && pwd -P)"
 CH2_SHELL_SCRIPTS_DIR="${master_scripts_dir}/Shell_Scripts"
-a_script="${CH2_SHELL_SCRIPTS_DIR}/A.Generate_Splits.sh"
 master_script="${master_scripts_dir}/masterSubmissionScript.sh"
 
 if [[ ! -r "${CH2_WORKDIR}/input/hatch_metadata.csv" ]]; then
@@ -52,31 +51,35 @@ if [[ ! "$CH2_ITERATIONS" =~ ^[1-9][0-9]*(,[1-9][0-9]*)*$ ]]; then
     exit 1
 fi
 
+IFS=, read -r -a iterations <<< "$CH2_ITERATIONS"
+iterdir="${CH2_WORKDIR}/tmp/iterationData"
+for iteration in "${iterations[@]}"; do
+    for split in training validation; do
+        split_file="${iterdir}/hatch_${split}Samples_metadata_iter${iteration}.csv"
+        if [[ ! -r "$split_file" ]]; then
+            echo "Required split metadata is missing or unreadable: ${split_file}" >&2
+            echo "Run Shell_Scripts/R_scripts/A.Generate_Splits.R manually before submitting the pipeline." >&2
+            exit 1
+        fi
+    done
+done
+
 if ! command -v sbatch >/dev/null 2>&1; then
     echo "sbatch was not found; run this launcher on a Slurm system." >&2
     exit 1
 fi
 
-if [[ ! -f "$a_script" || ! -f "$master_script" ]]; then
-    echo "Could not find both pipeline submission scripts under ${master_scripts_dir}." >&2
+if [[ ! -f "$master_script" ]]; then
+    echo "Could not find the pipeline submission script: ${master_script}" >&2
     exit 1
 fi
 
 mkdir -p "${CH2_WORKDIR}/output/permanovaResults" "${CH2_WORKDIR}/output/MLdata"
 export CH2_WORKDIR CH2_ITERATIONS CH2_SHELL_SCRIPTS_DIR
 
-a_job_id="$(sbatch --parsable --export=ALL "$a_script")"
-a_job_id="${a_job_id%%;*}"
-if [[ ! "$a_job_id" =~ ^[0-9]+$ ]]; then
-    echo "Could not parse Job A's Slurm job ID: ${a_job_id}" >&2
-    exit 1
-fi
-
 array_job_id="$(sbatch --parsable --export=ALL \
     --array="$CH2_ITERATIONS" \
-    --dependency="afterok:${a_job_id}" \
     "$master_script")"
- 
-printf 'Submitted Job A (ID %s).\n' "$a_job_id"
-printf 'Submitted iteration array (ID %s), dependent on Job A; iterations: %s\n' \
+
+printf 'Submitted iteration array (ID %s); iterations: %s\n' \
     "$array_job_id" "$CH2_ITERATIONS"
