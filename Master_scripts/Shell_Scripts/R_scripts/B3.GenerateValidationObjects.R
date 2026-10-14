@@ -2,7 +2,7 @@
 
 ## Date: 06.10.2026
 
-## Author: James B
+## Author: James B
 
 ## Description:
 ## This script generates the required analysis objects from the

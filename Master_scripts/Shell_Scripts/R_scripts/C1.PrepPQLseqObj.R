@@ -8,7 +8,7 @@
 
 #### Environment Preparation ####
 
-library(methylKit) # nolint: object_usage_linter.
+library(methylKit)
 library(dplyr)
 
 ## Pull iteration & available cores
@@ -30,7 +30,7 @@ iterdir <- file.path(tmpdir, "iterationData")
 prep_num_cs <- function(list_of_dfs) {
   for (i in seq_along(list_of_dfs)) {
     list_of_dfs[[i]] <- list_of_dfs[[i]] |>
-      plyr::select(-chr)
+      dplyr::select(-chr)
 
     col_names <- colnames(list_of_dfs[[i]])
     cols_to_delete <- grep("^coverage", col_names)

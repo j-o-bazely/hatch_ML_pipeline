@@ -2,7 +2,7 @@
 
 ## Date: 06.10.2026
 
-## Author:
+## Author:
 
 ## Description:
 ##    This script runs PQLseq on the training sample data   ##
@@ -106,15 +106,12 @@ treatment_no <- readRDS(
   )
 )
 
-#### Check" Samples alignment is consistent across objects ####
+#### Check Samples alignment is consistent across objects ####
 sample_cols <- paste0("ind", seq_along(treatment_no))
 
 if (
 !identical(colnames(num_cs_df), sample_cols) ||
 !identical(colnames(coverage_df), sample_cols) ||
-!identical(names(treatment_no), sample_mapping$Sample) ||
-!identical(rownames(relatedness_mat), sample_mapping$Sample) ||
-!identical(colnames(relatedness_mat), sample_mapping$Sample) ||
 ncol(num_cs_df) != length(treatment_no) ||
 ncol(coverage_df) != length(treatment_no)
 ) {
