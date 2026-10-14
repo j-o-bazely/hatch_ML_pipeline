@@ -28,3 +28,7 @@ script and use the same value when submitting the pipeline:
 If `CH2_ITERATIONS` is not specified, the submission launcher schedules
 iterations 1 through 1,000. It checks that the split metadata exists for every
 requested iteration before submitting the job array.
+
+Each C2 chromosome task retries its R script up to two times after the initial
+attempt, waiting 30 seconds between attempts. If all three attempts fail, the
+Slurm task exits with the final R script's failure status.

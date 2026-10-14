@@ -27,5 +27,24 @@ num_core="${SLURM_CPUS_PER_TASK:-1}"
 ## Pull chromosome ##
 chr_id="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required for chromosome array tasks}"
 
-## Run script to generate training and validation splits ##
-Rscript "${script_dir}/R_scripts/C2.RunPQLseq.R" "$iter" "$num_core" "$chr_id"
+## Retry this chromosome task when R exits unsuccessfully.
+max_attempts=3
+retry_delay=30
+attempt=1
+while (( attempt <= max_attempts )); do
+  if Rscript "${script_dir}/R_scripts/C2.RunPQLseq.R" "$iter" "$num_core" "$chr_id"; then
+    exit 0
+  else
+    status=$?
+  fi
+
+  printf 'C2 failed for iteration %s, chromosome task %s (attempt %s/%s; exit status %s).\n' \
+    "$iter" "$chr_id" "$attempt" "$max_attempts" "$status" >&2
+
+  if (( attempt == max_attempts )); then
+    exit "$status"
+  fi
+
+  sleep "$retry_delay"
+  attempt=$((attempt + 1))
+done
