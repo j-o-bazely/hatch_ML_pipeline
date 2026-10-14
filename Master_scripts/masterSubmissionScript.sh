@@ -6,6 +6,12 @@
 
 set -euo pipefail
 
+##  Define current iteration ##
+iter="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required; submit this script as a job array}"
+
+printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Iteration: %s\n' "$iter"
+
 CH2_WORKDIR="${CH2_WORKDIR:?Set CH2_WORKDIR to the pipeline data directory before submitting this script}"
 if [[ ! -d "$CH2_WORKDIR" ]]; then
     echo "CH2_WORKDIR is not an existing directory: $CH2_WORKDIR" >&2
@@ -13,9 +19,6 @@ if [[ ! -d "$CH2_WORKDIR" ]]; then
 fi
 export CH2_WORKDIR
 shell_scripts_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
-
-##  Define current iteration ##
-iter="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required; submit this script as a job array}"
 
 ##  MethylKit Objects     ##
 b1_job=$(sbatch --parsable \

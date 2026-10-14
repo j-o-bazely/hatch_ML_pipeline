@@ -8,6 +8,8 @@
 
 set -euo pipefail
 
+printf 'Script: %s\n' "$(basename -- "$0")"
+
 if [[ "$#" -ne 2 ]]; then
     echo "Usage: $0 <master-scripts-directory> <pipeline-work-directory>" >&2
     exit 2

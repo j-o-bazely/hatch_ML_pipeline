@@ -6,6 +6,11 @@
 
 set -euo pipefail
 
+iter=$1
+
+printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Iteration: %s\n' "$iter"
+
 ####            B3.GenerateValidationObjects.sh
 
 script_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
@@ -14,9 +19,6 @@ script_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit w
 if command -v module >/dev/null 2>&1; then
   module load R
 fi
-
-## Pull current iteration ##
-iter=$1
 
 ## Pull available cores ##
 num_core="${SLURM_CPUS_PER_TASK:-1}"

@@ -4,14 +4,16 @@
 #SBATCH --mem=16G
 #SBATCH --time=1:00:00
 
+iter=$1
+
+printf 'Script: %s\n' "$(basename -- "$0")"
+printf 'Iteration: %s\n' "$iter"
+
 ####            F.TidyEnvironment.sh
 
 : "${CH2_WORKDIR:?CH2_WORKDIR is required; submit with submitPipeline.sh}"
 workdir="$CH2_WORKDIR"
 tempdir="${workdir}/tmp/"
-
-## Pull current iteration ##
-iter=$1
 
 ## Check that expected outputs for this iteration have been generated   ##
 if [ "$(find "${workdir}/output/permanovaResults/iter${iter}_permanovaResults.txt" -print 2>/dev/null | wc -l)" -eq 0 ]; then
