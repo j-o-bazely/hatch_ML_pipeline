@@ -25,3 +25,4 @@ num_core="${SLURM_CPUS_PER_TASK:-1}"
 
 ## Run script to generate training and validation splits ##
 Rscript "${script_dir}/R_scripts/D.CombineDMAdata.R" "$iter" "$num_core"
+touch "${CH2_WORKDIR}/tmp/dms_ready_iter${iter}.success"

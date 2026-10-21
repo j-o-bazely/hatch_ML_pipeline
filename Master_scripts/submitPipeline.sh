@@ -31,6 +31,7 @@ master_scripts_dir="$(cd -- "$master_scripts_dir" && pwd -P)"
 CH2_WORKDIR="$(cd -- "$CH2_WORKDIR" && pwd -P)"
 CH2_SHELL_SCRIPTS_DIR="${master_scripts_dir}/Shell_Scripts"
 master_script="${master_scripts_dir}/masterSubmissionScript.sh"
+coordinator_script="${CH2_SHELL_SCRIPTS_DIR}/coordinatePipeline.sh"
 
 if [[ ! -r "${CH2_WORKDIR}/input/hatch_metadata.csv" ]]; then
     echo "Cannot read required metadata: ${CH2_WORKDIR}/input/hatch_metadata.csv" >&2
@@ -54,6 +55,11 @@ if [[ ! "$CH2_ITERATIONS" =~ ^[1-9][0-9]*(,[1-9][0-9]*)*$ ]]; then
 fi
 
 IFS=, read -r -a iterations <<< "$CH2_ITERATIONS"
+if [[ "${#iterations[@]}" -ne "$(printf '%s\n' "${iterations[@]}" | sort -u | wc -l | tr -d ' ')" ]]; then
+    echo "CH2_ITERATIONS must not contain duplicate iteration numbers." >&2
+    exit 1
+fi
+
 iterdir="${CH2_WORKDIR}/tmp/iterationData"
 for iteration in "${iterations[@]}"; do
     for split in training validation; do
@@ -75,13 +81,25 @@ if [[ ! -f "$master_script" ]]; then
     echo "Could not find the pipeline submission script: ${master_script}" >&2
     exit 1
 fi
+if [[ ! -f "$coordinator_script" ]]; then
+    echo "Could not find the pipeline coordinator: ${coordinator_script}" >&2
+    exit 1
+fi
 
-mkdir -p "${CH2_WORKDIR}/output/permanovaResults" "${CH2_WORKDIR}/output/MLdata"
+mkdir -p \
+    "${CH2_WORKDIR}/output/permanovaResults" \
+    "${CH2_WORKDIR}/output/MLdata" \
+    "${CH2_WORKDIR}/output/MLresults"
 export CH2_WORKDIR CH2_ITERATIONS CH2_SHELL_SCRIPTS_DIR
 
 array_job_id="$(sbatch --parsable --export=ALL \
     --array="$CH2_ITERATIONS" \
     "$master_script")"
 
-printf 'Submitted iteration array (ID %s); iterations: %s\n' \
+coordinator_job_id="$(sbatch --parsable --export=ALL \
+    --dependency="afterok:${array_job_id}" \
+    "$coordinator_script" "$array_job_id")"
+
+printf 'Submitted DMS iteration array (ID %s); iterations: %s\n' \
     "$array_job_id" "$CH2_ITERATIONS"
+printf 'Submitted pipeline coordinator (ID %s).\n' "$coordinator_job_id"

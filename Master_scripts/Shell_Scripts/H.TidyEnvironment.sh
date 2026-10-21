@@ -1,15 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=F.TidyEnvironment
+#SBATCH --job-name=H.TidyEnvironment
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --time=1:00:00
 
 iter=$1
 
-printf 'Script: F.TidyEnvironment.sh\n'
+printf 'Script: H.TidyEnvironment.sh\n'
 printf 'Iteration: %s\n' "$iter"
 
-####            F.TidyEnvironment.sh
+####            H.TidyEnvironment.sh
 
 : "${CH2_WORKDIR:?CH2_WORKDIR is required; submit with submitPipeline.sh}"
 workdir="$CH2_WORKDIR"
@@ -23,6 +23,11 @@ fi
 
 if [ "$(find "${workdir}/output/MLdata/" -name "*iter${iter}*" -print 2>/dev/null | wc -l)" -ne 6 ]; then
     echo "Expected ML data for iteration ${iter} not found. Exiting script."
+    exit 1
+fi
+
+if [[ ! -r "${workdir}/output/MLresults/iteration_model_results_iter${iter}.csv" ]]; then
+    echo "Expected machine-learning results for iteration ${iter} not found. Exiting script."
     exit 1
 fi
 

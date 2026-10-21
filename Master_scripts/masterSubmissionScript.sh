@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=masterSubmissionScript
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=32G
-#SBATCH --time=240:00:00
+#SBATCH --mem=4G
+#SBATCH --time=1:00:00
 
 set -euo pipefail
 
@@ -51,20 +51,16 @@ c3_job=$(sbatch --parsable \
     --dependency=afterok:${c2_job} \
     "${shell_scripts_dir}/C3.PvalAdjustSLIM.sh" "$iter")
 
+manifest_dir="${CH2_WORKDIR}/tmp/pipeline_jobs_${SLURM_ARRAY_JOB_ID}"
+mkdir -p "$manifest_dir"
+rm -f "${CH2_WORKDIR}/tmp/dms_ready_iter${iter}.success"
+
 ##      Combine Data      ##
 d_job=$(sbatch --parsable \
     --export=ALL \
     --dependency=afterok:${b2_job}:${c3_job} \
     "${shell_scripts_dir}/D.CombineDMAdata.sh" "$iter")
 
-##       Assess DMS       ##
-e_job=$(sbatch --parsable \
-    --export=ALL \
-    --dependency=afterok:${d_job}:${b3_job} \
-    "${shell_scripts_dir}/E.MeasureDMSinVal.sh" "$iter")
-
-##          Tidy up       ##
-f_job=$(sbatch --parsable \
-    --export=ALL \
-    --dependency=afterok:${e_job} \
-    "${shell_scripts_dir}/F.TidyEnvironment.sh" "$iter")
+manifest_tmp="${manifest_dir}/iter${iter}.jobs.$$"
+printf '%s\n%s\n' "$d_job" "$b3_job" > "$manifest_tmp"
+mv -- "$manifest_tmp" "${manifest_dir}/iter${iter}.jobs"

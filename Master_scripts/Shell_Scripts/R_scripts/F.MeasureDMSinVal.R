@@ -1,4 +1,4 @@
-###          E. Measure DMS in Validation Samples                ##
+###          F. Measure DMS in Validation Samples                ##
 
 ## Date: 06.10.2026
 
@@ -131,6 +131,69 @@ validation_dms_matrix <- as.data.frame(
   hatch_validation_dms_perc_meth
 )
 
+## Build ML features from the cross-iteration stable DMS set ##
+stable_dms <- read.csv(
+  file.path(workdir, "output", "MLresults", "stable_DMS_gt95pct.csv"),
+  colClasses = c(chr = "character")
+)
+if (nrow(stable_dms) == 0) {
+  stop("The stable DMS feature set is empty.")
+}
+required_columns <- c("chr", "start", "end")
+if (!all(required_columns %in% names(stable_dms))) {
+  stop("Stable DMS file is missing genomic coordinate columns.")
+}
+
+stable_dms_ranges <- makeGRangesFromDataFrame(
+  stable_dms,
+  seqnames.field = "chr",
+  start.field = "start",
+  end.field = "end",
+  keep.extra.columns = FALSE
+)
+training_stable_dms_unite_obj <- selectByOverlap(
+  hatch_training_unite_obj,
+  stable_dms_ranges
+)
+validation_stable_dms_unite_obj <- selectByOverlap(
+  hatch_validation_unite_obj,
+  stable_dms_ranges
+)
+training_stable_dms_matrix <- as.data.frame(
+  percMethylation(training_stable_dms_unite_obj, rowids = TRUE)
+)
+validation_stable_dms_matrix <- as.data.frame(
+  percMethylation(validation_stable_dms_unite_obj, rowids = TRUE)
+)
+
+if (
+  nrow(training_stable_dms_matrix) != nrow(stable_dms) ||
+  nrow(validation_stable_dms_matrix) != nrow(stable_dms)
+) {
+  stop("Not all stable DMS features are present in both sample sets.")
+}
+if (
+  !identical(
+    rownames(training_stable_dms_matrix),
+    rownames(validation_stable_dms_matrix)
+  )
+) {
+  stop("Training and validation stable DMS features do not match.")
+}
+if (
+  !identical(
+    colnames(training_stable_dms_matrix),
+    hatch_training_meta$Sample
+  ) ||
+  !identical(
+    colnames(validation_stable_dms_matrix),
+    hatch_validation_meta$Sample
+  )
+) {
+  stop("Stable DMS matrix columns do not match their sample metadata.")
+}
+
+
 
 ####      PERMANOVA of DMS        ####
 ###   Training Samples    ###
@@ -228,14 +291,14 @@ if (!identical(
 
 ## Save objects for use in ML ##
 saveRDS(
-  validation_dms_matrix,
+  validation_stable_dms_matrix,
   file.path(
     ml_dir,
     paste0("hatch_validationSamples_DMS_percMeth_df_iter", iter, ".RDS")
   )
 )
 saveRDS(
-  hatch_validation_dms_unite_obj,
+  validation_stable_dms_unite_obj,
   file = file.path(
     ml_dir,
     paste0("hatch_validationSamples_DMS_uniteObj_iter", iter, ".RDS")
@@ -243,14 +306,14 @@ saveRDS(
 )
 
 saveRDS(
-  training_dms_matrix,
+  training_stable_dms_matrix,
   file.path(
     ml_dir,
     paste0("hatch_trainingSamples_DMS_percMeth_df_iter", iter, ".RDS")
   )
 )
 saveRDS(
-  hatch_training_dms_unite_obj,
+  training_stable_dms_unite_obj,
   file = file.path(
     ml_dir,
     paste0("hatch_trainingSamples_DMS_uniteObj_iter", iter, ".RDS")
