@@ -6,16 +6,14 @@
 
 set -euo pipefail
 
-if [[ "$#" -ne 1 ]]; then
-    echo "Usage: $0 <iteration>" >&2
-    exit 2
-fi
-
-iter="$1"
 printf 'Script: G.elasticNet_ML.sh\n'
-printf 'Iteration: %s\n' "$iter"
 
 script_dir="${CH2_SHELL_SCRIPTS_DIR:?CH2_SHELL_SCRIPTS_DIR is required; submit with submitPipeline.sh}"
 : "${CH2_WORKDIR:?CH2_WORKDIR is required; submit with submitPipeline.sh}"
 
-python3 "${script_dir}/R_scripts/G.elasticNet_ML.py" "$iter"
+## Activate virtual environment ##
+source /data/home/bty500/.virtualenvs/hatch_ML/bin/activate
+
+python3 "${script_dir}/R_scripts/G.elasticNet_ML.py"
+
+deactivate

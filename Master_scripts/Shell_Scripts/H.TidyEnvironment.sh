@@ -26,10 +26,5 @@ if [ "$(find "${workdir}/output/MLdata/" -name "*iter${iter}*" -print 2>/dev/nul
     exit 1
 fi
 
-if [[ ! -r "${workdir}/output/MLresults/iteration_model_results_iter${iter}.csv" ]]; then
-    echo "Expected machine-learning results for iteration ${iter} not found. Exiting script."
-    exit 1
-fi
-
 ## Delete intermediate files generated for this iteration ##
 rm -f "${tempdir}"*iter${iter}[_.]*

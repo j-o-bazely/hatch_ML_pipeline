@@ -58,20 +58,24 @@ stable_job="$(sbatch --parsable \
     "${shell_scripts_dir}/E.SelectStableDMS.sh")"
 printf 'Submitted stable-DMS selection (ID %s).\n' "$stable_job"
 
+final_data_job="$(sbatch --parsable \
+    --export=ALL \
+    --dependency="afterok:${stable_job}" \
+    "${shell_scripts_dir}/G.PrepareFinalModelData.sh")"
+final_model_job="$(sbatch --parsable \
+    --export=ALL \
+    --dependency="afterok:${final_data_job}" \
+    "${shell_scripts_dir}/G.elasticNet_ML.sh")"
+
 for iteration in "${iterations[@]}"; do
     manifest="${manifest_dir}/iter${iteration}.jobs"
     d_job="$(sed -n '1p' "$manifest")"
     b3_job="$(sed -n '2p' "$manifest")"
 
-    e_job="$(sbatch --parsable \
+    f_job="$(sbatch --parsable \
         --export=ALL \
         --dependency="afterok:${d_job}:${b3_job}:${stable_job}" \
         "${shell_scripts_dir}/F.MeasureDMSinVal.sh" "$iteration")"
-
-    f_job="$(sbatch --parsable \
-        --export=ALL \
-        --dependency="afterok:${e_job}" \
-        "${shell_scripts_dir}/G.elasticNet_ML.sh" "$iteration")"
 
     sbatch --parsable \
         --export=ALL \
@@ -79,5 +83,7 @@ for iteration in "${iterations[@]}"; do
         "${shell_scripts_dir}/H.TidyEnvironment.sh" "$iteration" >/dev/null
 done
 
-printf 'Submitted validation, ML, and tidy-up jobs for iterations: %s\n' \
+printf 'Submitted final feature preparation (ID %s) and model training (ID %s).\n' \
+    "$final_data_job" "$final_model_job"
+printf 'Submitted validation analysis and tidy-up jobs for iterations: %s\n' \
     "$CH2_ITERATIONS"

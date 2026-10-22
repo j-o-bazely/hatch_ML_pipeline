@@ -61,6 +61,18 @@ if [[ "${#iterations[@]}" -ne "$(printf '%s\n' "${iterations[@]}" | sort -u | wc
 fi
 
 iterdir="${CH2_WORKDIR}/tmp/iterationData"
+for cohort_file in \
+    "hatch_modelTrainingCohort_metadata.csv" \
+    "hatch_thresholdCalibration_metadata.csv" \
+    "hatch_deploymentSamples_metadata.csv"; do
+    split_file="${iterdir}/${cohort_file}"
+    if [[ ! -r "$split_file" ]]; then
+        echo "Required fixed cohort metadata is missing or unreadable: ${split_file}" >&2
+        echo "Run Shell_Scripts/R_scripts/A.Generate_Splits.R before submitting the pipeline." >&2
+        exit 1
+    fi
+done
+
 for iteration in "${iterations[@]}"; do
     for split in training validation; do
         split_file="${iterdir}/hatch_${split}Samples_metadata_iter${iteration}.csv"
