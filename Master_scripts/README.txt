@@ -1,46 +1,34 @@
 ## Description
 
-The pipeline uses fixed maternal-group cohorts for model development,
-classification-threshold calibration, and a final proof-of-concept deployment
-evaluation. All hatchlings from a mother remain in the same cohort.
+The automated pipeline identifies consensus DMS using repeated, family-aware
+resamples of the fixed model-training cohort. It then generates feature
+matrices at those DMS for training, threshold calibration, and deployment.
+Machine-learning analysis is intentionally interactive and is not submitted
+automatically.
 
 ## Cohort design
 
 `A.Generate_Splits.R` expects 29 maternal groups with four hatchlings each and
 creates a single, reproducible split:
 
-- 20 mothers (80 hatchlings) for DMS identification and model development.
-- 6 mothers (24 hatchlings) for classification-threshold calibration.
-- 3 mothers (12 hatchlings) for final deployment evaluation.
+- 19 mothers (76 hatchlings) for DMS identification and model development.
+- 6 mothers (24 hatchlings) for threshold calibration, with 3 infected and
+  3 uninfected mothers.
+- 4 mothers (16 hatchlings) for deployment evaluation.
 
 The deployment cohort contains one randomly selected low-burden infected
-mother, one high-burden infected mother, and one uninfected mother. The six
-calibration mothers are selected from the remaining groups, stratified by
-maternal infection status; the other 20 form the model-training cohort. The
-three cohort assignments remain fixed across all iterations.
+mother, one high-burden infected mother, and two uninfected mothers. Calibration
+mothers are selected from the remaining groups to give an equal infected and
+uninfected mix; burden is not used for this selection. The other 19 mothers
+form the model-training cohort. All cohort assignments remain fixed across
+iterations, and all hatchlings from a mother remain together.
 
-Each DMS iteration resamples 80% of the 20 model-training mothers, keeping all
-of each selected mother's hatchlings together. DMS are therefore identified
-only within the training cohort. Stage E selects consensus DMS present in more
-than 95% of requested iterations; failed or missing iterations count as absent.
+Each DMS iteration resamples 80% of the 19 model-training mothers. DMS are
+identified only within the model-training cohort. Stage E selects consensus
+DMS present in more than 95% of requested iterations; failed or missing
+iterations count as absent.
 
-After consensus DMS selection, the pipeline constructs feature matrices for
-all three fixed cohorts. The final elastic-net model is tuned by 5-fold
-stratified, mother-grouped cross-validation on the 20 training mothers and is
-then refit on all 20. The six calibration mothers are used to select a
-classification threshold by balanced accuracy. The fitted model and threshold
-are frozen before predictions are evaluated on the three deployment mothers.
-The deployment cohort is not used for feature selection, hyperparameter
-tuning, or threshold selection.
-
-The deployment evaluation contains only three independent maternal groups.
-It is intended as a proof-of-concept and should not be interpreted as a precise
-estimate of performance in future populations. Cross-validation tunes
-hyperparameters after the consensus DMS set has been selected on the training
-cohort; its score is not presented as an unbiased estimate of the complete
-feature-selection-and-modeling procedure.
-
-## Running the pipeline
+## Running the automated pipeline
 
 Set `CH2_WORKDIR` to the pipeline data directory, which must contain
 `input/hatch_metadata.csv` and
@@ -62,28 +50,42 @@ generating the splits and use the same value when submitting the pipeline:
 
 If `CH2_ITERATIONS` is not specified, the submission launcher schedules
 iterations 1 through 1,000. It checks that fixed cohort metadata and
-per-iteration resample metadata exist before submitting the job array. The
-launcher submits the per-iteration DMS jobs, then a coordinator schedules
-consensus-DMS selection, final feature-matrix preparation, model fitting,
-threshold calibration, deployment evaluation, and intermediate cleanup.
+per-iteration training-resample metadata exist before submitting the job array.
+After the DMS iterations finish, the coordinator selects consensus DMS and
+generates the three final feature matrices. The automated workflow ends there;
+it does not fit a model, select a threshold, or evaluate deployment samples.
 
 Each C2 chromosome task retries its R script up to two times after the initial
 attempt, waiting 30 seconds between attempts. If all three attempts fail, the
 Slurm task exits with the final R script's failure status.
 
-Final outputs are written to `output/MLresults/`:
+## Interactive machine learning
 
-- `stable_DMS_gt95pct.csv`: consensus DMS selected from training-only
-  iterations.
-- `final_elastic_net_model.joblib`: fitted scikit-learn estimator, threshold,
-  and feature IDs.
-- `final_model_results.csv`: selected hyperparameters, threshold, and
-  calibration/deployment metrics.
-- `threshold_calibration_predictions.csv`: predictions for the six calibration
-  mothers.
-- `deployment_predictions.csv`: predictions and observed labels for the three
-  deployment mothers.
+Open `Shell_Scripts/R_scripts/G.elasticNet_ML.ipynb` in Jupyter after the
+automated pipeline completes. Set `CH2_WORKDIR` in the notebook environment,
+then run the cells to load and inspect the generated cohort data, tune and fit
+an example elastic-net model, select a threshold using the calibration cohort,
+save the frozen model, and evaluate it on the held-out deployment cohort. The
+notebook is an interactive starting point; model choice and analysis can be
+edited there. Do not use deployment results to revise the model or threshold.
 
-The final-model job uses Python 3 with pandas, NumPy, joblib, rdata, and
-scikit-learn available in its environment. Use scikit-learn 1.1 or later for
-`StratifiedGroupKFold`.
+The notebook environment needs pandas, NumPy, joblib, and scikit-learn. Use
+scikit-learn 1.1 or later for `StratifiedGroupKFold`.
+
+## Generated data
+
+The main automated outputs are:
+
+- `output/MLresults/stable_DMS_gt95pct.csv`: consensus DMS selected using only
+  training resamples.
+- `output/MLdata/hatch_modelTraining_DMS_percMeth_final.csv` and matching
+  `hatch_modelTraining_metadata_final.csv`.
+- `output/MLdata/hatch_thresholdCalibration_DMS_percMeth_final.csv` and
+  matching `hatch_thresholdCalibration_metadata_final.csv`.
+- `output/MLdata/hatch_deployment_DMS_percMeth_final.csv` and matching
+  `hatch_deployment_metadata_final.csv`.
+
+Feature matrices are CSV files with DMS as rows and hatchling samples as
+columns. Matching metadata files provide sample IDs, maternal groups, and
+response labels. These files are the hand-off point from automated processing
+to the interactive notebook.

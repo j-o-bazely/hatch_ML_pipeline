@@ -54,7 +54,9 @@ stable_dms <- read.csv(
   file.path(workdir, "output", "MLresults", "stable_DMS_gt95pct.csv"),
   colClasses = c(chr = "character")
 )
+
 required_dms_columns <- c("chr", "start", "end")
+
 if (!all(required_dms_columns %in% names(stable_dms)) || nrow(stable_dms) == 0) {
   stop("Stable DMS file is empty or missing genomic coordinate columns.")
 }
@@ -72,7 +74,9 @@ stable_dms_ranges <- makeGRangesFromDataFrame(
   end.field = "end",
   keep.extra.columns = FALSE
 )
+
 expected_feature_ids <- paste(stable_dms$chr, stable_dms$start, sep = ".")
+
 full_methylation <- readRDS(
   file.path(
     workdir,
@@ -90,25 +94,33 @@ make_feature_matrix <- function(metadata, cohort_name) {
       paste(missing_samples, collapse = ", ")
     )
   }
+  ## Reorganise object to keep only cohort-specific samples ##
   cohort_object <- reorganize(
     full_methylation,
     sample.ids = metadata$Sample,
     treatment = as.numeric(as.character(metadata$parasiteFactor))
   )
+
+  ## Subset for consensus DMS ##
   feature_object <- selectByOverlap(cohort_object, stable_dms_ranges)
+
   feature_matrix <- as.data.frame(
     percMethylation(feature_object, rowids = TRUE)
   )
 
   if (
     nrow(feature_matrix) != length(expected_feature_ids) ||
-    !setequal(rownames(feature_matrix), expected_feature_ids)
+    !setequal(
+      sub("\\.([0-9]+)$", "", rownames(feature_matrix)),
+      expected_feature_ids
+    )
   ) {
     stop(
       cohort_name,
       " feature matrix does not contain exactly the consensus DMS."
     )
   }
+
   feature_matrix <- feature_matrix[expected_feature_ids, , drop = FALSE]
   if (!identical(colnames(feature_matrix), metadata$Sample)) {
     stop(cohort_name, " feature matrix sample order does not match metadata.")
@@ -121,15 +133,17 @@ cohorts <- list(
   thresholdCalibration = calibration_meta,
   deployment = deployment_meta
 )
+
 for (cohort_name in names(cohorts)) {
   metadata <- cohorts[[cohort_name]]
   feature_matrix <- make_feature_matrix(metadata, cohort_name)
-  saveRDS(
+  write.csv(
     feature_matrix,
     file.path(
       ml_dir,
-      paste0("hatch_", cohort_name, "_DMS_percMeth_final.RDS")
-    )
+      paste0("hatch_", cohort_name, "_DMS_percMeth_final.csv")
+    ),
+    row.names = TRUE
   )
   write.csv(
     metadata,

@@ -30,8 +30,7 @@ for iteration in "${iterations[@]}"; do
         exit 1
     fi
     d_job="$(sed -n '1p' "$manifest")"
-    b3_job="$(sed -n '2p' "$manifest")"
-    if [[ -z "$d_job" || -z "$b3_job" ]]; then
+    if [[ -z "$d_job" ]]; then
         echo "Invalid per-iteration job manifest: ${manifest}" >&2
         exit 1
     fi
@@ -62,28 +61,6 @@ final_data_job="$(sbatch --parsable \
     --export=ALL \
     --dependency="afterok:${stable_job}" \
     "${shell_scripts_dir}/G.PrepareFinalModelData.sh")"
-final_model_job="$(sbatch --parsable \
-    --export=ALL \
-    --dependency="afterok:${final_data_job}" \
-    "${shell_scripts_dir}/G.elasticNet_ML.sh")"
-
-for iteration in "${iterations[@]}"; do
-    manifest="${manifest_dir}/iter${iteration}.jobs"
-    d_job="$(sed -n '1p' "$manifest")"
-    b3_job="$(sed -n '2p' "$manifest")"
-
-    f_job="$(sbatch --parsable \
-        --export=ALL \
-        --dependency="afterok:${d_job}:${b3_job}:${stable_job}" \
-        "${shell_scripts_dir}/F.MeasureDMSinVal.sh" "$iteration")"
-
-    sbatch --parsable \
-        --export=ALL \
-        --dependency="afterok:${f_job}" \
-        "${shell_scripts_dir}/H.TidyEnvironment.sh" "$iteration" >/dev/null
-done
-
-printf 'Submitted final feature preparation (ID %s) and model training (ID %s).\n' \
-    "$final_data_job" "$final_model_job"
-printf 'Submitted validation analysis and tidy-up jobs for iterations: %s\n' \
-    "$CH2_ITERATIONS"
+printf 'Submitted three-cohort feature-matrix preparation (ID %s).\n' \
+    "$final_data_job"
+printf 'Automation ends after the training, threshold-calibration, and deployment matrices are generated.\n'

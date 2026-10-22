@@ -74,14 +74,12 @@ for cohort_file in \
 done
 
 for iteration in "${iterations[@]}"; do
-    for split in training validation; do
-        split_file="${iterdir}/hatch_${split}Samples_metadata_iter${iteration}.csv"
-        if [[ ! -r "$split_file" ]]; then
-            echo "Required split metadata is missing or unreadable: ${split_file}" >&2
-            echo "Run Shell_Scripts/R_scripts/A.Generate_Splits.R manually before submitting the pipeline." >&2
-            exit 1
-        fi
-    done
+    split_file="${iterdir}/hatch_trainingSamples_metadata_iter${iteration}.csv"
+    if [[ ! -r "$split_file" ]]; then
+        echo "Required training resample metadata is missing or unreadable: ${split_file}" >&2
+        echo "Run Shell_Scripts/R_scripts/A.Generate_Splits.R before submitting the pipeline." >&2
+        exit 1
+    fi
 done
 
 if ! command -v sbatch >/dev/null 2>&1; then
@@ -99,7 +97,6 @@ if [[ ! -f "$coordinator_script" ]]; then
 fi
 
 mkdir -p \
-    "${CH2_WORKDIR}/output/permanovaResults" \
     "${CH2_WORKDIR}/output/MLdata" \
     "${CH2_WORKDIR}/output/MLresults"
 export CH2_WORKDIR CH2_ITERATIONS CH2_SHELL_SCRIPTS_DIR

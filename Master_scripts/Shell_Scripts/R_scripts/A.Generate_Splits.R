@@ -77,37 +77,43 @@ if (any(samples_per_mother != 4)) {
 if (nrow(mother_meta) != 29) {
   stop(
     "The fixed cohort design requires exactly 29 maternal groups: ",
-    "20 training, 6 threshold calibration, and 3 deployment."
+    "19 training, 6 threshold calibration, and 4 deployment."
   )
 }
 
-select_one_mother <- function(candidates, description) {
-  if (nrow(candidates) == 0) {
-    stop("No eligible maternal group is available for ", description, ".")
+select_mothers <- function(candidates, n, description) {
+  if (nrow(candidates) < n) {
+    stop(
+      "Need ", n, " eligible maternal groups for ", description,
+      ", but found ", nrow(candidates), "."
+    )
   }
-  sample(as.character(candidates$Mother), size = 1)
+  sample(as.character(candidates$Mother), size = n, replace = FALSE)
 }
 
 deploy_mothers <- c(
-  select_one_mother(
+  select_mothers(
     dplyr::filter(
       mother_meta,
       maternal_infection_status == "yes",
       Amount_cloacal_p == "1 to 5"
     ),
-    "the low-burden infected deployment cohort"
+    n = 1,
+    description = "the low-burden infected deployment cohort"
   ),
-  select_one_mother(
+  select_mothers(
     dplyr::filter(
       mother_meta,
       maternal_infection_status == "yes",
       Amount_cloacal_p == ">26"
     ),
-    "the high-burden infected deployment cohort"
+    n = 1,
+    description = "the high-burden infected deployment cohort"
   ),
-  select_one_mother(
+  select_mothers(
     dplyr::filter(mother_meta, maternal_infection_status == "no"),
-    "the uninfected deployment cohort"
+    n = 2,
+    description = "the two uninfected deployment mothers"
   )
 )
 if (anyDuplicated(deploy_mothers)) {
@@ -159,7 +165,24 @@ sample_stratified_mothers <- function(group_meta, n) {
   selected
 }
 
-calibration_mothers <- sample_stratified_mothers(remaining_mothers, n = 6)
+remaining_infected <- dplyr::filter(
+  remaining_mothers,
+  maternal_infection_status == "yes"
+)
+remaining_uninfected <- dplyr::filter(
+  remaining_mothers,
+  maternal_infection_status == "no"
+)
+if (nrow(remaining_infected) < 3 || nrow(remaining_uninfected) < 3) {
+  stop(
+    "At least three infected and three uninfected mothers must remain after ",
+    "deployment selection to create a balanced calibration cohort."
+  )
+}
+calibration_mothers <- c(
+  sample(as.character(remaining_infected$Mother), size = 3),
+  sample(as.character(remaining_uninfected$Mother), size = 3)
+)
 training_mothers <- setdiff(
   as.character(remaining_mothers$Mother),
   calibration_mothers
@@ -168,6 +191,16 @@ training_mothers <- setdiff(
 training_cohort <- meta[meta$Mother %in% training_mothers, , drop = FALSE]
 calibration_cohort <- meta[meta$Mother %in% calibration_mothers, , drop = FALSE]
 deployment_cohort <- meta[meta$Mother %in% deploy_mothers, , drop = FALSE]
+deployment_mother_meta <- dplyr::filter(
+  mother_meta,
+  Mother %in% deploy_mothers
+)
+if (
+  sum(deployment_mother_meta$maternal_infection_status == "yes") != 2 ||
+  sum(deployment_mother_meta$maternal_infection_status == "no") != 2
+) {
+  stop("Deployment cohort must contain two infected and two uninfected mothers.")
+}
 
 cohort_mothers <- list(
   training = unique(as.character(training_cohort$Mother)),
@@ -175,14 +208,25 @@ cohort_mothers <- list(
   deployment = unique(as.character(deployment_cohort$Mother))
 )
 if (
-  length(cohort_mothers$training) != 20 ||
+  length(cohort_mothers$training) != 19 ||
   length(cohort_mothers$calibration) != 6 ||
-  length(cohort_mothers$deployment) != 3 ||
+  length(cohort_mothers$deployment) != 4 ||
   length(intersect(cohort_mothers$training, cohort_mothers$calibration)) > 0 ||
   length(intersect(cohort_mothers$training, cohort_mothers$deployment)) > 0 ||
   length(intersect(cohort_mothers$calibration, cohort_mothers$deployment)) > 0
 ) {
   stop("The fixed training, calibration, and deployment cohorts are invalid.")
+}
+
+calibration_mother_meta <- dplyr::filter(
+  mother_meta,
+  Mother %in% calibration_mothers
+)
+if (
+  sum(calibration_mother_meta$maternal_infection_status == "yes") != 3 ||
+  sum(calibration_mother_meta$maternal_infection_status == "no") != 3
+) {
+  stop("Threshold calibration cohort must contain three mothers per class.")
 }
 
 for (cohort in list(training_cohort, calibration_cohort, deployment_cohort)) {

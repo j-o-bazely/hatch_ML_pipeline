@@ -30,10 +30,6 @@ b2_job=$(sbatch --parsable \
     --dependency=afterok:${b1_job} \
     "${shell_scripts_dir}/B2.MethylKitDMA.sh" "$iter")
 
-b3_job=$(sbatch --parsable \
-    --export=ALL \
-    "${shell_scripts_dir}/B3.GenerateValidationObjects.sh" "$iter")
-
 ##         PQLseq         ##
 c1_job=$(sbatch --parsable \
     --export=ALL \
@@ -62,5 +58,5 @@ d_job=$(sbatch --parsable \
     "${shell_scripts_dir}/D.CombineDMAdata.sh" "$iter")
 
 manifest_tmp="${manifest_dir}/iter${iter}.jobs.$$"
-printf '%s\n%s\n' "$d_job" "$b3_job" > "$manifest_tmp"
+printf '%s\n' "$d_job" > "$manifest_tmp"
 mv -- "$manifest_tmp" "${manifest_dir}/iter${iter}.jobs"
