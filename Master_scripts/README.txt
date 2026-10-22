@@ -52,8 +52,14 @@ If `CH2_ITERATIONS` is not specified, the submission launcher schedules
 iterations 1 through 1,000. It checks that fixed cohort metadata and
 per-iteration training-resample metadata exist before submitting the job array.
 After the DMS iterations finish, the coordinator selects consensus DMS and
-generates the three final feature matrices. The automated workflow ends there;
-it does not fit a model, select a threshold, or evaluate deployment samples.
+generates the three final feature matrices. A cleanup job runs only after that
+matrix-generation job succeeds. It removes per-iteration temporary DMS files,
+resample metadata, and the job manifest, while retaining fixed cohort
+metadata, consensus DMS, final feature matrices, and each iteration's
+q-value-0.01 DMS RDS file. Cleanup is submitted after feature generation,
+which itself waits for every per-iteration DMS job to finish. The automated
+workflow does not fit a model, select a threshold, or evaluate deployment
+samples.
 
 Each C2 chromosome task retries its R script up to two times after the initial
 attempt, waiting 30 seconds between attempts. If all three attempts fail, the
@@ -76,6 +82,9 @@ scikit-learn 1.1 or later for `StratifiedGroupKFold`.
 
 The main automated outputs are:
 
+- `output/MLresults/all_DMS_by_iteration.csv`: every unique DMS identified in
+  each successful requested iteration, with its iteration number. Repeated
+  coordinates appear once per iteration in which they were detected.
 - `output/MLresults/stable_DMS_gt95pct.csv`: consensus DMS selected using only
   training resamples.
 - `output/MLdata/hatch_modelTraining_DMS_percMeth_final.csv` and matching

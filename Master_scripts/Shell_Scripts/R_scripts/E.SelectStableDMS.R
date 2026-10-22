@@ -51,15 +51,35 @@ for (index in seq_along(iterations)) {
   if (anyNA(sites)) {
     stop("DMS results contain missing or invalid coordinates: ", dms_file)
   }
+  sites$iteration <- iteration
   site_tables[[index]] <- sites
 }
 
-site_tables <- Filter(Negate(is.null), site_tables)
-if (length(site_tables) == 0) {
+results_dir <- file.path(workdir, "output", "MLresults")
+dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
+available_site_tables <- Filter(Negate(is.null), site_tables)
+if (length(available_site_tables) == 0) {
+  all_sites <- data.frame(
+    chr = character(),
+    start = integer(),
+    end = integer(),
+    iteration = integer()
+  )
+} else {
+  all_sites <- do.call(rbind, available_site_tables)
+}
+
+all_sites_file <- file.path(results_dir, "all_DMS_by_iteration.csv")
+write.csv(all_sites, all_sites_file, row.names = FALSE)
+message(
+  "Saved ", nrow(all_sites), " iteration-specific DMS records to: ",
+  all_sites_file
+)
+
+if (length(available_site_tables) == 0 || nrow(all_sites) == 0) {
   stop("No requested iterations produced readable DMS results.")
 }
 
-all_sites <- do.call(rbind, site_tables)
 site_keys <- paste(all_sites$chr, all_sites$start, all_sites$end, sep = "\t")
 site_frequency <- as.data.frame(table(site_keys), stringsAsFactors = FALSE)
 names(site_frequency) <- c("key", "iterations_present")
@@ -67,21 +87,20 @@ site_frequency$iterations_present <- as.integer(site_frequency$iterations_presen
 stable_keys <- site_frequency$key[
   site_frequency$iterations_present / length(iterations) > 0.95
 ]
-if (length(stable_keys) == 0) {
-  stop("No DMS were present in more than 95% of all requested iterations.")
-}
-
 first_occurrence <- !duplicated(site_keys)
 unique_sites <- all_sites[first_occurrence, , drop = FALSE]
 unique_keys <- site_keys[first_occurrence]
 stable_sites <- unique_sites[match(stable_keys, unique_keys), , drop = FALSE]
+stable_sites$iteration <- NULL
 stable_sites$iterations_present <- site_frequency$iterations_present[
   match(stable_keys, site_frequency$key)
 ]
 stable_sites$frequency <- stable_sites$iterations_present / length(iterations)
 
-results_dir <- file.path(workdir, "output", "MLresults")
-dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
+if (length(stable_keys) == 0) {
+  stop("No DMS were present in more than 95% of all requested iterations.")
+}
+
 results_file <- file.path(results_dir, "stable_DMS_gt95pct.csv")
 write.csv(stable_sites, results_file, row.names = FALSE)
 

@@ -61,6 +61,14 @@ final_data_job="$(sbatch --parsable \
     --export=ALL \
     --dependency="afterok:${stable_job}" \
     "${shell_scripts_dir}/G.PrepareFinalModelData.sh")"
+# The stable-DMS job depends on barriers covering every per-iteration DMS job.
+# Keeping cleanup behind feature generation therefore waits for all iterations'
+# upstream jobs before removing their temporary files.
+cleanup_job="$(sbatch --parsable \
+    --export=ALL \
+    --dependency="afterok:${final_data_job}" \
+    "${shell_scripts_dir}/H.TidyEnvironment.sh" "$master_array_job_id")"
 printf 'Submitted three-cohort feature-matrix preparation (ID %s).\n' \
     "$final_data_job"
+printf 'Submitted post-generation cleanup (ID %s).\n' "$cleanup_job"
 printf 'Automation ends after the training, threshold-calibration, and deployment matrices are generated.\n'
