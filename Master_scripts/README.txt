@@ -25,8 +25,8 @@ iterations, and all hatchlings from a mother remain together.
 
 Each DMS iteration resamples 80% of the 19 model-training mothers. DMS are
 identified only within the model-training cohort. Stage E selects consensus
-DMS present in more than 95% of requested iterations; failed or missing
-iterations count as absent.
+DMS present in at least 50% of requested iterations; a site present in exactly
+half the iterations qualifies. Failed or missing iterations count as absent.
 
 ## Running the automated pipeline
 
@@ -85,7 +85,7 @@ The main automated outputs are:
 - `output/MLresults/all_DMS_by_iteration.csv`: every unique DMS identified in
   each successful requested iteration, with its iteration number. Repeated
   coordinates appear once per iteration in which they were detected.
-- `output/MLresults/stable_DMS_gt95pct.csv`: consensus DMS selected using only
+- `output/MLresults/stable_DMS_ge50pct.csv`: consensus DMS selected using only
   training resamples.
 - `output/MLdata/hatch_modelTraining_DMS_percMeth_final.csv` and matching
   `hatch_modelTraining_metadata_final.csv`.

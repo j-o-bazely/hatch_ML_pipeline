@@ -1,4 +1,4 @@
-#### E. Select DMS found in more than 95% of requested iterations ####
+#### E. Select DMS found in at least 50% of requested iterations ####
 
 library(methylKit)
 
@@ -85,7 +85,7 @@ site_frequency <- as.data.frame(table(site_keys), stringsAsFactors = FALSE)
 names(site_frequency) <- c("key", "iterations_present")
 site_frequency$iterations_present <- as.integer(site_frequency$iterations_present)
 stable_keys <- site_frequency$key[
-  site_frequency$iterations_present / length(iterations) > 0.95
+  site_frequency$iterations_present / length(iterations) >= 0.50
 ]
 first_occurrence <- !duplicated(site_keys)
 unique_sites <- all_sites[first_occurrence, , drop = FALSE]
@@ -98,10 +98,10 @@ stable_sites$iterations_present <- site_frequency$iterations_present[
 stable_sites$frequency <- stable_sites$iterations_present / length(iterations)
 
 if (length(stable_keys) == 0) {
-  stop("No DMS were present in more than 95% of all requested iterations.")
+  stop("No DMS were present in at least 50% of all requested iterations.")
 }
 
-results_file <- file.path(results_dir, "stable_DMS_gt95pct.csv")
+results_file <- file.path(results_dir, "stable_DMS_ge50pct.csv")
 write.csv(stable_sites, results_file, row.names = FALSE)
 
 message(

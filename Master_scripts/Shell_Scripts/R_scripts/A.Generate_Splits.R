@@ -2,10 +2,11 @@
 
 library(dplyr)
 
-workdir <- Sys.getenv(
-  "CH2_WORKDIR",
-  unset = normalizePath(getwd(), winslash = "/", mustWork = FALSE)
-)
+workdir <- Sys.getenv("CH2_WORKDIR")
+if (!nzchar(workdir)) {
+  stop("CH2_WORKDIR must be set to the pipeline data directory.")
+}
+workdir <- normalizePath(workdir, winslash = "/", mustWork = TRUE)
 iterdir <- file.path(workdir, "tmp", "iterationData")
 dir.create(iterdir, recursive = TRUE, showWarnings = FALSE)
 

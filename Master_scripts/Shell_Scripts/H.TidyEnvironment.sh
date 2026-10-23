@@ -20,7 +20,7 @@ tmpdir="${CH2_WORKDIR}/tmp"
 iterdir="${tmpdir}/iterationData"
 manifest_dir="${tmpdir}/pipeline_jobs_${array_job_id}"
 
-if [[ ! -r "${CH2_WORKDIR}/output/MLresults/stable_DMS_gt95pct.csv" ]]; then
+if [[ ! -r "${CH2_WORKDIR}/output/MLresults/stable_DMS_ge50pct.csv" ]]; then
     echo "Consensus DMS output is missing; refusing to clean intermediates." >&2
     exit 1
 fi
